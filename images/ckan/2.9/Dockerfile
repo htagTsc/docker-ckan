@@ -66,7 +66,7 @@ RUN pip wheel --wheel-dir=/wheels uwsgi==2.0.19.1 gevent==21.1.2 greenlet==1.1.0
 
 
 ###########################
-### Default-Extensions ####
+###### Extensions ########
 ###########################
 FROM alpine:3.14.2 as extbuild
 
@@ -80,6 +80,8 @@ ENV DEFAULT_EXTENSIONS envvars
 # Locations and tags, please use specific tags or revisions
 ENV ENVVARS_GIT_URL=https://github.com/okfn/ckanext-envvars
 ENV ENVVARS_GIT_BRANCH=0.0.1
+ENV HARVEST_GIT_URL=https://github.com/ckan/ckanext-harvest
+ENV HARVEST_GIT_BRANCH=v1.3.1
 
 # Make sure we install python 3.8, cause CKAN is not compatible with 3.9
 RUN apk add --no-cache --repository=http://dl-cdn.alpinelinux.org/alpine/v3.13/main \
@@ -99,15 +101,19 @@ RUN mkdir -p ${SRC_DIR}
 RUN curl -o ${SRC_DIR}/get-pip.py https://bootstrap.pypa.io/get-pip.py && \
     python ${SRC_DIR}/get-pip.py
 
-# Fetch and build the default CKAN extensions
+# Fetch and build the CKAN extensions
 RUN pip wheel --wheel-dir=/wheels git+${ENVVARS_GIT_URL}@${ENVVARS_GIT_BRANCH}#egg=ckanext-envvars
+
+RUN pip wheel --wheel-dir=/wheels git+${HARVEST_GIT_URL}@${HARVEST_GIT_BRANCH}#egg=ckanext-harvest
+RUN pip wheel --wheel-dir=/wheels -r https://raw.githubusercontent.com/ckan/ckanext-harvest/${HARVEST_GIT_BRANCH}/pip-requirements.txt
+RUN curl -o /wheels/harvest.txt https://raw.githubusercontent.com/ckan/ckanext-harvest/${HARVEST_GIT_BRANCH}/pip-requirements.txt
 
 ############
 ### MAIN ###
 ############
 FROM alpine:3.14.2
 
-LABEL maintainer="Keitaro Inc <info@keitaro.com>"
+LABEL originator="Keitaro Inc <info@keitaro.com>"
 LABEL org.opencontainers.image.source https://github.com/keitaroinc/docker-ckan
 
 ENV APP_DIR=/srv/app
@@ -116,7 +122,7 @@ ENV CKAN_DIR=${SRC_DIR}/ckan
 ENV DATA_DIR=/srv/app/data
 ENV PIP_SRC=${SRC_DIR}
 ENV CKAN_SITE_URL=http://localhost:5000
-ENV CKAN__PLUGINS envvars image_view text_view recline_view datastore datapusher
+ENV CKAN__PLUGINS envvars image_view text_view datastore datapusher harvest ckan_harvest
 
 # Install necessary packages to run CKAN
 # Make sure we install python 3.8, cause CKAN is not compatible with 3.9
@@ -160,8 +166,10 @@ WORKDIR ${CKAN_DIR}
 RUN pip install -e /srv/app/src/ckan && \
     cp who.ini ${APP_DIR} && \
     pip install --no-index --find-links=/srv/app/wheels -r requirements.txt && \
+    pip install --no-index --find-links=/srv/app/ext_wheels -r /srv/app/ext_wheels/harvest.txt && \
     # Install default CKAN extensions
     pip install --no-index --find-links=/srv/app/ext_wheels ckanext-envvars && \
+    pip install --no-index --find-links=/srv/app/ext_wheels ckanext-harvest && \
     # Create and update CKAN config
     # Set timezone
     echo "UTC" >  /etc/timezone && \
@@ -180,6 +188,9 @@ RUN pip install -e /srv/app/src/ckan && \
 
 # Remove wheels
 RUN rm -rf /srv/app/wheels /srv/app/ext_wheels
+
+# Add afterinit scripts
+COPY ./afterinit.d/00_harvest.sh ${APP_DIR}/docker-afterinit.d/00_harvest.sh
 
 # Copy necessary scripts
 COPY setup/app ${APP_DIR}

@@ -38,7 +38,7 @@ RUN apk add --no-cache --repository=http://dl-cdn.alpinelinux.org/alpine/v3.13/m
         pcre \
         libffi-dev \
         libxml2-dev \
-        libxslt-dev
+        libxslt-dev 
 
 # Link python to python3
 RUN ln -s /usr/bin/python3 /usr/bin/python
@@ -81,7 +81,7 @@ ENV DEFAULT_EXTENSIONS envvars
 ENV ENVVARS_GIT_URL=https://github.com/okfn/ckanext-envvars
 ENV ENVVARS_GIT_BRANCH=0.0.1
 ENV HARVEST_GIT_URL=https://github.com/ckan/ckanext-harvest
-ENV HARVEST_GIT_BRANCH=v1.3.1
+ENV HARVEST_GIT_BRANCH=v1.3.3
 
 # Make sure we install python 3.8, cause CKAN is not compatible with 3.9
 RUN apk add --no-cache --repository=http://dl-cdn.alpinelinux.org/alpine/v3.13/main \
@@ -89,7 +89,22 @@ RUN apk add --no-cache --repository=http://dl-cdn.alpinelinux.org/alpine/v3.13/m
         python3-dev=3.8.10-r0 && \
     apk add --no-cache \
         git \
-        curl 
+        curl \
+        postgresql-dev \
+        linux-headers \
+        gcc \
+        make \
+        g++ \
+        autoconf \
+        automake \
+        libtool \
+        patch \
+        musl-dev \
+        pcre-dev \
+        pcre \
+        libffi-dev \
+        libxml2-dev \
+        libxslt-dev 
 
 # Link python to python3
 RUN ln -s /usr/bin/python3 /usr/bin/python
@@ -122,7 +137,7 @@ ENV CKAN_DIR=${SRC_DIR}/ckan
 ENV DATA_DIR=/srv/app/data
 ENV PIP_SRC=${SRC_DIR}
 ENV CKAN_SITE_URL=http://localhost:5000
-ENV CKAN__PLUGINS envvars image_view text_view datastore datapusher harvest ckan_harvest
+ENV CKAN__PLUGINS envvars image_view text_view datastore datapusher harvest ckan_harvester
 
 # Install necessary packages to run CKAN
 # Make sure we install python 3.8, cause CKAN is not compatible with 3.9
@@ -166,10 +181,11 @@ WORKDIR ${CKAN_DIR}
 RUN pip install -e /srv/app/src/ckan && \
     cp who.ini ${APP_DIR} && \
     pip install --no-index --find-links=/srv/app/wheels -r requirements.txt && \
-    pip install --no-index --find-links=/srv/app/ext_wheels -r /srv/app/ext_wheels/harvest.txt && \
     # Install default CKAN extensions
     pip install --no-index --find-links=/srv/app/ext_wheels ckanext-envvars && \
     pip install --no-index --find-links=/srv/app/ext_wheels ckanext-harvest && \
+    pip install --no-index --find-links=/srv/app/ext_wheels -r /srv/app/ext_wheels/harvest.txt && \
+
     # Create and update CKAN config
     # Set timezone
     echo "UTC" >  /etc/timezone && \

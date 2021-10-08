@@ -82,6 +82,14 @@ ENV ENVVARS_GIT_URL=https://github.com/okfn/ckanext-envvars
 ENV ENVVARS_GIT_BRANCH=0.0.1
 ENV HARVEST_GIT_URL=https://github.com/ckan/ckanext-harvest
 ENV HARVEST_GIT_BRANCH=v1.3.3
+ENV DCAT_GIT_URL=https://github.com/ckan/ckanext-dcat
+ENV DCAT_GIT_BRANCH=v1.1.2
+#ENV DCATDE_GIT_URL=https://github.com/GovDataOfficial/ckanext-dcatde
+#ENV DCATDE_GIT_BRANCH=4.0.0
+ENV VISUALIZE_GIT_URL=https://github.com/keitaroinc/ckanext-visualize
+ENV VISUALIZE_GIT_BRANCH=v1.0.0
+ENV PAGES_GIT_URL=https://github.com/ckan/ckanext-pages
+ENV PAGES_GIT_BRANCH=v0.3.3
 
 # Make sure we install python 3.8, cause CKAN is not compatible with 3.9
 RUN apk add --no-cache --repository=http://dl-cdn.alpinelinux.org/alpine/v3.13/main \
@@ -116,12 +124,37 @@ RUN mkdir -p ${SRC_DIR}
 RUN curl -o ${SRC_DIR}/get-pip.py https://bootstrap.pypa.io/get-pip.py && \
     python ${SRC_DIR}/get-pip.py
 
-# Fetch and build the CKAN extensions
+# Downgrade setuptools so that CKAN requirements can be built
+RUN pip install setuptools==44.1.0
+
+# Fetch and build the CKAN envvars extension
 RUN pip wheel --wheel-dir=/wheels git+${ENVVARS_GIT_URL}@${ENVVARS_GIT_BRANCH}#egg=ckanext-envvars
 
+#CKAN Harvester
 RUN pip wheel --wheel-dir=/wheels git+${HARVEST_GIT_URL}@${HARVEST_GIT_BRANCH}#egg=ckanext-harvest
 RUN pip wheel --wheel-dir=/wheels -r https://raw.githubusercontent.com/ckan/ckanext-harvest/${HARVEST_GIT_BRANCH}/pip-requirements.txt
 RUN curl -o /wheels/harvest.txt https://raw.githubusercontent.com/ckan/ckanext-harvest/${HARVEST_GIT_BRANCH}/pip-requirements.txt
+
+#CKAN DCAT extension
+RUN pip wheel --wheel-dir=/wheels git+${DCAT_GIT_URL}@${DCAT_GIT_BRANCH}#egg=ckanext-dcat
+RUN pip wheel --wheel-dir=/wheels -r https://raw.githubusercontent.com/ckan/ckanext-dcat/${DCAT_GIT_BRANCH}/requirements.txt
+RUN curl -o /wheels/dcat.txt https://raw.githubusercontent.com/ckan/ckanext-dcat/${DCAT_GIT_BRANCH}/requirements.txt
+
+#CKAN Pages extension
+RUN pip wheel --wheel-dir=/wheels git+${PAGES_GIT_URL}@${PAGES_GIT_BRANCH}#egg=ckanext-pages
+RUN pip wheel --wheel-dir=/wheels -r https://raw.githubusercontent.com/ckan/ckanext-pages/${PAGES_GIT_BRANCH}/requirements.txt
+RUN curl -o /wheels/pages.txt https://raw.githubusercontent.com/ckan/ckanext-pages/${PAGES_GIT_BRANCH}/requirements.txt
+
+#CKAN VISUALIZE extension
+RUN pip wheel --wheel-dir=/wheels git+${VISUALIZE_GIT_URL}@${VISUALIZE_GIT_BRANCH}#egg=ckanext-visualize
+RUN pip wheel --wheel-dir=/wheels -r https://raw.githubusercontent.com/keitaroinc/ckanext-visualize/${VISUALIZE_GIT_BRANCH}/requirements.txt
+RUN curl -o /wheels/visualize.txt https://raw.githubusercontent.com/keitaroinc/ckanext-visualize/${VISUALIZE_GIT_BRANCH}/requirements.txt
+
+#CKAN DCATDE extension
+#RUN pip wheel --wheel-dir=/wheels git+${DCATDE_GIT_URL}@${DCATDE_GIT_BRANCH}#egg=ckanext-dcatde
+#RUN pip wheel --wheel-dir=/wheels -r https://raw.githubusercontent.com/GovDataOfficial/ckanext-dcatde/${DCATDE_GIT_BRANCH}/base-requirements.txt
+#RUN curl -o /wheels/dcatde.txt https://raw.githubusercontent.com/GovDataOfficial/ckanext-dcatde/${DCATDE_GIT_BRANCH}/base-requirements.txt
+
 
 ############
 ### MAIN ###
@@ -137,7 +170,7 @@ ENV CKAN_DIR=${SRC_DIR}/ckan
 ENV DATA_DIR=/srv/app/data
 ENV PIP_SRC=${SRC_DIR}
 ENV CKAN_SITE_URL=http://localhost:5000
-ENV CKAN__PLUGINS envvars image_view text_view datastore datapusher harvest ckan_harvester
+ENV CKAN__PLUGINS envvars image_view text_view datastore datapusher harvest ckan_harvester dcat dcat_rdf_harvester dcat_json_harvester dcat_json_interface structured_data visualize pages
 
 # Install necessary packages to run CKAN
 # Make sure we install python 3.8, cause CKAN is not compatible with 3.9
@@ -180,15 +213,172 @@ WORKDIR ${CKAN_DIR}
 # Install CKAN
 RUN pip install -e /srv/app/src/ckan && \
     cp who.ini ${APP_DIR} && \
+    
+    #CKAN envvars 
     pip install --no-index --find-links=/srv/app/wheels -r requirements.txt && \
-    # Install default CKAN extensions
     pip install --no-index --find-links=/srv/app/ext_wheels ckanext-envvars && \
+
+    #CKAN harvester
     pip install --no-index --find-links=/srv/app/ext_wheels ckanext-harvest && \
     pip install --no-index --find-links=/srv/app/ext_wheels -r /srv/app/ext_wheels/harvest.txt && \
 
+    #CKAN DCAT
+    pip install --no-index --find-links=/srv/app/ext_wheels ckanext-dcat && \
+    pip install --no-index --find-links=/srv/app/ext_wheels -r /srv/app/ext_wheels/dcat.txt && \
+
+    #CKAN VISUALIZE
+    pip install --no-index --find-links=/srv/app/ext_wheels ckanext-visualize && \
+    pip install --no-index --find-links=/srv/app/ext_wheels -r /srv/app/ext_wheels/visualize.txt && \
+
+    #CKAN PAGES
+    pip install --no-index --find-links=/srv/app/ext_wheels ckanext-pages && \
+    pip install --no-index --find-links=/srv/app/ext_wheels -r /srv/app/ext_wheels/pages.txt && \
+
+    #CKAN DCATDE
+    #pip install --no-index --find-links=/srv/app/ext_wheels ckanext-dcatde && \
+    #pip install --no-index --find-links=/srv/app/ext_wheels -r /srv/app/ext_wheels/dcatde.txt && \
+
     # Create and update CKAN config
     # Set timezone
-    echo "UTC" >  /etc/timezone && \
+    echo "UTC+2" >  /etc/timezone && \
+    # Generate CKAN config
+    ckan generate config ${APP_DIR}/production.ini && \
+    # Configure plugins
+    ckan config-tool ${APP_DIR}/production.ini "ckan.plugins = ${CKAN__PLUGINS}" && \
+    # Create the data directory
+    mkdir ${DATA_DIR} && \
+    # Webassets can't be loaded from env variables at runtime, it needs to be in the config so that it is created
+    ckan config-tool ${APP_DIR}/production.ini "ckan.webassets.path = ${DATA_DIR}/webassets" && \
+    # Set the default level for extensions to INFO
+    ckan config-tool ${APP_DIR}/production.ini -s logger_ckanext -e level=INFO && \
+    # Change ownership to app user
+    chown -R ckan:ckan /srv/app
+
+
+###########################
+###### Extensions 2 ########
+###########################
+FROM alpine:3.14.2 as extbuild
+
+# Set src dirs
+ENV SRC_DIR=/srv/app/src
+ENV PIP_SRC=${SRC_DIR}
+
+# List of default extensions
+ENV DEFAULT_EXTENSIONS envvars
+
+# Locations and tags, please use specific tags or revisions
+ENV DCATDE_GIT_URL=https://github.com/GovDataOfficial/ckanext-dcatde
+ENV DCATDE_GIT_BRANCH=4.0.0
+
+# Make sure we install python 3.8, cause CKAN is not compatible with 3.9
+RUN apk add --no-cache --repository=http://dl-cdn.alpinelinux.org/alpine/v3.13/main \
+        python3=3.8.10-r0 \
+        python3-dev=3.8.10-r0 && \
+    apk add --no-cache \
+        git \
+        curl \
+        postgresql-dev \
+        linux-headers \
+        gcc \
+        make \
+        g++ \
+        autoconf \
+        automake \
+        libtool \
+        patch \
+        musl-dev \
+        pcre-dev \
+        pcre \
+        libffi-dev \
+        libxml2-dev \
+        libxslt-dev 
+
+# Link python to python3
+RUN ln -s /usr/bin/python3 /usr/bin/python
+
+# Create the src directory
+RUN mkdir -p ${SRC_DIR}
+
+# Install pip
+RUN curl -o ${SRC_DIR}/get-pip.py https://bootstrap.pypa.io/get-pip.py && \
+    python ${SRC_DIR}/get-pip.py
+
+# Downgrade setuptools so that CKAN requirements can be built
+RUN pip install setuptools==44.1.0
+
+#CKAN DCATDE extension
+RUN pip wheel --wheel-dir=/wheels git+${DCATDE_GIT_URL}@${DCATDE_GIT_BRANCH}#egg=ckanext-dcatde
+RUN pip wheel --wheel-dir=/wheels -r https://raw.githubusercontent.com/GovDataOfficial/ckanext-dcatde/${DCATDE_GIT_BRANCH}/base-requirements.txt
+RUN curl -o /wheels/dcatde.txt https://raw.githubusercontent.com/GovDataOfficial/ckanext-dcatde/${DCATDE_GIT_BRANCH}/base-requirements.txt
+
+
+
+############
+### MAIN 2###
+############
+FROM alpine:3.14.2
+
+LABEL originator="Keitaro Inc <info@keitaro.com>"
+LABEL org.opencontainers.image.source https://github.com/keitaroinc/docker-ckan
+
+ENV APP_DIR=/srv/app
+ENV SRC_DIR=/srv/app/src
+ENV CKAN_DIR=${SRC_DIR}/ckan
+ENV DATA_DIR=/srv/app/data
+ENV PIP_SRC=${SRC_DIR}
+ENV CKAN_SITE_URL=http://localhost:5000
+ENV CKAN__PLUGINS  dcatde dcatde_rdf_harvester
+
+# Install necessary packages to run CKAN
+# Make sure we install python 3.8, cause CKAN is not compatible with 3.9
+RUN apk add --no-cache --repository=http://dl-cdn.alpinelinux.org/alpine/v3.13/main \
+        python3=3.8.10-r0 && \
+    apk add --no-cache git \
+        bash \
+        gettext \
+        curl \
+        postgresql-client \
+        libmagic \
+        pcre \
+        libxslt \
+        libxml2 \
+        tzdata \
+        apache2-utils && \
+    # Create SRC_DIR
+    mkdir -p ${SRC_DIR} && \
+    # Link python to python3
+    ln -s /usr/bin/python3 /usr/bin/python
+
+# Install pip
+RUN curl -o ${SRC_DIR}/get-pip.py https://bootstrap.pypa.io/get-pip.py && \
+    python ${SRC_DIR}/get-pip.py
+
+# Get artifacts from build stages
+COPY --from=ckanbuild /wheels /srv/app/wheels
+COPY --from=extbuild /wheels /srv/app/ext_wheels
+COPY --from=ckanbuild /srv/app/src/ckan ${CKAN_DIR}
+
+# Additional install steps for build stages artifacts
+RUN pip install --no-index --find-links=/srv/app/wheels uwsgi==2.0.19.1 gevent==21.1.2
+
+# Create a local user and group to run the app
+RUN addgroup -g 92 -S ckan && \
+    adduser -u 92 -h /srv/app -H -D -S -G ckan ckan
+
+WORKDIR ${CKAN_DIR}
+
+# Install CKAN
+RUN pip install -e /srv/app/src/ckan && \
+    cp who.ini ${APP_DIR} && \
+    
+    #CKAN DCATDE
+    pip install --no-index --find-links=/srv/app/ext_wheels ckanext-dcatde && \
+    pip install --no-index --find-links=/srv/app/ext_wheels -r /srv/app/ext_wheels/dcatde.txt && \
+
+    # Create and update CKAN config
+    # Set timezone
+    echo "UTC+2" >  /etc/timezone && \
     # Generate CKAN config
     ckan generate config ${APP_DIR}/production.ini && \
     # Configure plugins

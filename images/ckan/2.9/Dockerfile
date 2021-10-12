@@ -111,6 +111,8 @@ ENV GEOVIEW_GIT_URL=https://github.com/ckan/ckanext-geoview
 ENV GEOVIEW_GIT_BRANCH=v0.0.18
 #ENV CHARTS_GIT_URL=https://github.com/ckan/ckanext-basiccharts --> Not Python3 ready
 #ENV CHARTS_GIT_BRANCH=master
+#ENV OAUTH_GIT_URL=https://github.com/conwetlab/ckanext-oauth2 --> Not Python3 ready
+#ENV OAUTH_GIT_BRANCH=0.7.0
 
 # Make sure we install python 3.8, cause CKAN is not compatible with 3.9
 RUN apk add --no-cache --repository=http://dl-cdn.alpinelinux.org/alpine/v3.13/main \
@@ -157,7 +159,7 @@ RUN pip install setuptools==44.1.0
 RUN pip wheel --wheel-dir=/wheels git+${ENVVARS_GIT_URL}@${ENVVARS_GIT_BRANCH}#egg=ckanext-envvars
 
 # Fetch and build the CKAN Scheming extension
-RUN pip wheel --wheel-dir=/wheels git+${SCHEMING_GIT_URL}@${SCHEMING_GIT_BRANCH}#egg=ckanext-scheming
+#RUN pip wheel --wheel-dir=/wheels git+${SCHEMING_GIT_URL}@${SCHEMING_GIT_BRANCH}#egg=ckanext-scheming
 
 #CKAN Harvester
 RUN pip wheel --wheel-dir=/wheels git+${HARVEST_GIT_URL}@${HARVEST_GIT_BRANCH}#egg=ckanext-harvest

@@ -43,7 +43,6 @@ RUN apk add --no-cache --repository=http://dl-cdn.alpinelinux.org/alpine/v3.13/m
         libffi-dev \
         libxml2-dev \
         libxslt-dev \
-        geos \
         geos-dev \
         proj \
         proj-dev \
@@ -155,7 +154,7 @@ RUN curl -o ${SRC_DIR}/get-pip.py https://bootstrap.pypa.io/get-pip.py && \
 # Downgrade setuptools so that CKAN requirements can be built
 RUN pip install setuptools==44.1.0
 
-# Fetch and build the CKAN envvars extension --> Seems to work
+# Fetch and build the CKAN envvars extension 
 RUN pip wheel --wheel-dir=/wheels git+${ENVVARS_GIT_URL}@${ENVVARS_GIT_BRANCH}#egg=ckanext-envvars
 
 # Fetch and build the CKAN Scheming extension

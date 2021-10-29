@@ -80,13 +80,13 @@ ENV ENVVARS_GIT_BRANCH=0.0.1
 ENV HARVEST_GIT_URL=https://github.com/ckan/ckanext-harvest
 ENV HARVEST_GIT_BRANCH=v1.2.1
 ENV THEMING_GIT_URL=https://github.com/htagTsc/ckanext-custom_theme
-ENV THEMING_GIT_BRANCH=1.0.0
+ENV THEMING_GIT_BRANCH=1.0.1
 ENV SPATIAL_GIT_URL=https://github.com/ckan/ckanext-spatial
 ENV SPATIAL_GIT_BRANCH=v1.0.0
 ENV DCAT_GIT_URL=https://github.com/htagTsc/ckanext-dcat/
-ENV DCAT_GIT_BRANCH=master
+ENV DCAT_GIT_BRANCH=v1.1.2.1
 ENV DCATDE_GIT_URL=https://github.com/htagTsc/ckanext-dcatde
-ENV DCATDE_GIT_BRANCH=master
+ENV DCATDE_GIT_BRANCH=4.4.1.1
 ENV PAGES_GIT_URL=https://github.com/ckan/ckanext-pages
 ENV PAGES_GIT_BRANCH=v0.3.3
 ENV GEOVIEW_GIT_URL=https://github.com/ckan/ckanext-geoview
@@ -94,9 +94,9 @@ ENV GEOVIEW_GIT_BRANCH=v0.0.18
 ENV PDFVIEW_GIT_URL=https://github.com/ckan/ckanext-pdfview
 ENV PDFVIEW_GIT_BRANCH=0.0.7
 ENV EXTRAFIELDS_GIT_URL=https://github.com/htagTsc/ckanext-extrafields
-ENV EXTRAFIELDS_GIT_BRANCH=0.3.1
-#ENV OAUTH_GIT_URL=https://github.com/conwetlab/ckanext-oauth2 --> Integration needs to be done
-#ENV OAUTH_GIT_BRANCH=0.7.0
+ENV EXTRAFIELDS_GIT_BRANCH=1.0.0
+ENV OAUTH_GIT_URL=https://github.com/htagTsc/ckanext-oauth2
+ENV OAUTH_GIT_BRANCH=v0.7.0.1
 
 
 RUN apk add --no-cache \
@@ -164,7 +164,6 @@ RUN curl -o /wheels/pages.txt https://raw.githubusercontent.com/ckan/ckanext-pag
 RUN pip wheel --wheel-dir=/wheels git+${DCATDE_GIT_URL}@${DCATDE_GIT_BRANCH}#egg=ckanext-dcatde
 RUN pip wheel --wheel-dir=/wheels -r https://raw.githubusercontent.com/htagTsc/ckanext-dcatde/${DCATDE_GIT_BRANCH}/base-requirements.txt
 RUN curl -o /wheels/dcatde.txt https://raw.githubusercontent.com/htagTsc/ckanext-dcatde/${DCATDE_GIT_BRANCH}/base-requirements.txt
-RUN curl -o ../dcatde.txt https://raw.githubusercontent.com/htagTsc/ckanext-dcatde/${DCATDE_GIT_BRANCH}/base-requirements.txt
 
 #CKAN GEOVIEW extension
 RUN pip wheel --wheel-dir=/wheels git+${GEOVIEW_GIT_URL}@${GEOVIEW_GIT_BRANCH}#egg=ckanext-geoview
@@ -176,6 +175,11 @@ RUN pip wheel --wheel-dir=/wheels git+${PDFVIEW_GIT_URL}@${PDFVIEW_GIT_BRANCH}#e
 
 #CKAN Extrafields extension 
 RUN pip wheel --wheel-dir=/wheels git+${EXTRAFIELDS_GIT_URL}@${EXTRAFIELDS_GIT_BRANCH}#egg=ckanext-extrafields
+
+#CKAN OAuth2 extension 
+RUN pip wheel --wheel-dir=/wheels git+${OAUTH_GIT_URL}@${OAUTH_GIT_BRANCH}#egg=ckanext-outh2
+RUN pip wheel --wheel-dir=/wheels -r https://raw.githubusercontent.com/htagTsc/ckanext-oauth2/${OAUTH_GIT_BRANCH}/requirements.txt
+RUN curl -o /wheels/oauth2.txt https://raw.githubusercontent.com/htagTsc/ckanext-oauth2/${OAUTH_GIT_BRANCH}/requirements.txt
 
 ############
 ### MAIN ###
@@ -191,7 +195,7 @@ ENV CKAN_DIR=${SRC_DIR}/ckan
 ENV DATA_DIR=/srv/app/data
 ENV PIP_SRC=${SRC_DIR}
 ENV CKAN_SITE_URL=http://localhost:5000
-ENV CKAN__PLUGINS envvars image_view pdf_view recline_view text_view webpage_view datastore datapusher custom_theme extrafields harvest ckan_harvester geo_view geojson_view wmts_view shp_view dcat dcatde dcatde_rdf_harvester pages resource_proxy spatial_metadata spatial_query
+ENV CKAN__PLUGINS envvars image_view pdf_view recline_view text_view webpage_view datastore datapusher custom_theme extrafields harvest ckan_harvester geo_view geojson_view wmts_view shp_view dcat dcatde dcatde_rdf_harvester pages resource_proxy spatial_metadata spatial_query oauth2
 
 # Install necessary packages to run CKAN
 RUN apk add --no-cache git \
@@ -277,12 +281,22 @@ RUN pip install -e /srv/app/src/ckan && \
     #CKAN Extrafields
     pip install --no-index --find-links=/srv/app/ext_wheels ckanext-extrafields && \
 
+    #CKAN Oauth2
+    pip install --no-index --find-links=/srv/app/ext_wheels ckanext-oauth2 && \
+    pip install --no-index --find-links=/srv/app/ext_wheels -r /srv/app/ext_wheels/oauth2.txt && \
+
     # Create and update CKAN config
     # Set timezone
     echo "UTC" >  /etc/timezone && \
+
+    curl -o /srv/app/dcat_theme.json https://raw.githubusercontent.com/htagTsc/ckanext-dcatde/${DCATDE_GIT_BRANCH}/examples/dcat_theme.json && \
+    curl -o /srv/app/dcat_licenses.json https://raw.githubusercontent.com/htagTsc/ckanext-dcatde/${DCATDE_GIT_BRANCH}/examples/dcat_licenses.json && \
+
     # Generate CKAN config
     paster --plugin=ckan make-config ckan ${APP_DIR}/production.ini && \
     paster --plugin=ckan config-tool ${APP_DIR}/production.ini "ckan.plugins = ${CKAN__PLUGINS}" && \
+    #paster --plugin=ckan config-tool ${APP_DIR}/production.ini "license_group_url = /srv/app/dcat_licenses.json" && \
+    #paster --plugin=ckan config-tool ${APP_DIR}/production.ini "ckanext.dcatde.urls.themes = ../../dcat_theme.json" && \
 
     # Set the default level for extensions to INFO
     paster --plugin=ckan config-tool ${APP_DIR}/production.ini -s logger_ckanext -e level=WARNING && \

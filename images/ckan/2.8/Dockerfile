@@ -289,13 +289,16 @@ RUN pip install -e /srv/app/src/ckan && \
     # Set timezone
     echo "UTC" >  /etc/timezone && \
 
-    curl -o /srv/app/dcat_theme.json https://raw.githubusercontent.com/htagTsc/ckanext-dcatde/${DCATDE_GIT_BRANCH}/examples/dcat_theme.json && \
-    curl -o /srv/app/dcat_licenses.json https://raw.githubusercontent.com/htagTsc/ckanext-dcatde/${DCATDE_GIT_BRANCH}/examples/dcat_licenses.json && \
+    curl -o /srv/app/dcat_theme.json https://raw.githubusercontent.com/htagTsc/ckanext-dcatde/master/examples/dcat_theme.json && \
+    curl -o /srv/app/dcat_licenses.json https://raw.githubusercontent.com/htagTsc/ckanext-dcatde/master/examples/dcat_licenses.json && \
 
     # Generate CKAN config
     paster --plugin=ckan make-config ckan ${APP_DIR}/production.ini && \
     paster --plugin=ckan config-tool ${APP_DIR}/production.ini "ckan.plugins = ${CKAN__PLUGINS}" && \
-    #paster --plugin=ckan config-tool ${APP_DIR}/production.ini "license_group_url = /srv/app/dcat_licenses.json" && \
+    paster --plugin=ckan config-tool ${APP_DIR}/production.ini "ckanext.dcat.rdf.profiles = euro_dcat_ap dcatap_de" && \
+    paster --plugin=ckan config-tool ${APP_DIR}/production.ini "licenses_group_url = file:///srv/app/dcat_licenses.json" && \
+    paster --plugin=ckan config-tool ${APP_DIR}/production.ini "ckanext.dcatde.harvest.default_license = http://dcat-ap.de/def/licenses/dl-by-de/1.0" && \
+    paster --plugin=ckan config-tool ${APP_DIR}/production.ini "ckanext.dcatde.urls.themes = file:///srv/app/dcat_theme.json" && \
     #paster --plugin=ckan config-tool ${APP_DIR}/production.ini "ckanext.dcatde.urls.themes = ../../dcat_theme.json" && \
 
     # Set the default level for extensions to INFO

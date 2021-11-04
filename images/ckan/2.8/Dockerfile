@@ -97,6 +97,8 @@ ENV EXTRAFIELDS_GIT_URL=https://github.com/htagTsc/ckanext-extrafields
 ENV EXTRAFIELDS_GIT_BRANCH=1.0.0
 ENV OAUTH_GIT_URL=https://github.com/htagTsc/ckanext-oauth2
 ENV OAUTH_GIT_BRANCH=v0.7.0.1
+ENV CHARTS_GIT_URL=https://github.com/localidata/ckanext-basiccharts
+ENV CHARTS_GIT_BRANCH=master
 
 
 RUN apk add --no-cache \
@@ -176,10 +178,13 @@ RUN pip wheel --wheel-dir=/wheels git+${PDFVIEW_GIT_URL}@${PDFVIEW_GIT_BRANCH}#e
 #CKAN Extrafields extension 
 RUN pip wheel --wheel-dir=/wheels git+${EXTRAFIELDS_GIT_URL}@${EXTRAFIELDS_GIT_BRANCH}#egg=ckanext-extrafields
 
-#CKAN OAuth2 extension 
+#CKAN OAuth2 extension https://github.com/ckan/ckanext-basiccharts
 RUN pip wheel --wheel-dir=/wheels git+${OAUTH_GIT_URL}@${OAUTH_GIT_BRANCH}#egg=ckanext-outh2
 RUN pip wheel --wheel-dir=/wheels -r https://raw.githubusercontent.com/htagTsc/ckanext-oauth2/${OAUTH_GIT_BRANCH}/requirements.txt
 RUN curl -o /wheels/oauth2.txt https://raw.githubusercontent.com/htagTsc/ckanext-oauth2/${OAUTH_GIT_BRANCH}/requirements.txt
+
+#CKAN Charts Extension
+RUN pip wheel --wheel-dir=/wheels git+${CHARTS_GIT_URL}@${CHARTS_GIT_BRANCH}#egg=ckanext-basiccharts
 
 ############
 ### MAIN ###
@@ -195,7 +200,7 @@ ENV CKAN_DIR=${SRC_DIR}/ckan
 ENV DATA_DIR=/srv/app/data
 ENV PIP_SRC=${SRC_DIR}
 ENV CKAN_SITE_URL=http://localhost:5000
-ENV CKAN__PLUGINS envvars image_view pdf_view recline_view text_view webpage_view datastore datapusher custom_theme extrafields harvest ckan_harvester geo_view geojson_view wmts_view shp_view dcat dcatde dcatde_rdf_harvester pages resource_proxy spatial_metadata spatial_query oauth2
+ENV CKAN__PLUGINS envvars image_view pdf_view recline_view text_view webpage_view datastore datapusher custom_theme extrafields harvest ckan_harvester geo_view geojson_view wmts_view shp_view dcat dcatde dcatde_rdf_harvester pages resource_proxy spatial_metadata spatial_query oauth2 linechart barchart piechart basicgrid
 
 # Install necessary packages to run CKAN
 RUN apk add --no-cache git \
@@ -285,6 +290,9 @@ RUN pip install -e /srv/app/src/ckan && \
     pip install --no-index --find-links=/srv/app/ext_wheels ckanext-oauth2 && \
     pip install --no-index --find-links=/srv/app/ext_wheels -r /srv/app/ext_wheels/oauth2.txt && \
 
+    #CKAN Basiccharts
+    pip install --no-index --find-links=/srv/app/ext_wheels ckanext-basiccharts && \
+
     # Create and update CKAN config
     # Set timezone
     echo "UTC" >  /etc/timezone && \
@@ -302,7 +310,7 @@ RUN pip install -e /srv/app/src/ckan && \
     #paster --plugin=ckan config-tool ${APP_DIR}/production.ini "ckanext.dcatde.urls.themes = ../../dcat_theme.json" && \
 
     # Set the default level for extensions to INFO
-    paster --plugin=ckan config-tool ${APP_DIR}/production.ini -s logger_ckanext -e level=WARNING && \
+    paster --plugin=ckan config-tool ${APP_DIR}/production.ini -s logger_ckanext -e level=ERROR && \
     # Create the data directory
     mkdir ${DATA_DIR} && \
     # Change ownership to app user
